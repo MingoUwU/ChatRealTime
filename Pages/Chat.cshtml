@@ -1,0 +1,695 @@
+﻿@page
+@model ChatModel
+
+@{
+    ViewData["Title"] = "Chat Room";
+}
+
+<style>
+    :root {
+        --primary-gradient: linear-gradient(135deg, #0084ff 0%, #00c6ff 100%);
+        --bg-color: #f0f2f5;
+        --chat-bg: #ffffff;
+        --bubble-in: #e4e6eb;
+        --bubble-out: #0084ff;
+        --text-primary: #050505;
+        --text-secondary: #65676b;
+        --text-white: #fff;
+    }
+
+    body {
+        background-color: var(--bg-color);
+    }
+
+    .chat-container {
+        max-width: 900px;
+        margin: 2rem auto;
+        background: var(--chat-bg);
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 85vh;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    /* Header */
+    .chat-header {
+        background: white;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        z-index: 10;
+    }
+
+    .chat-header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    /* Messages Area */
+    .chat-messages {
+        flex: 1;
+        padding: 1.5rem;
+        overflow-y: auto;
+        background-color: white;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .message-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .message-item {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        max-width: 75%;
+        animation: slideUp 0.2s ease-out;
+    }
+
+    @@keyframes slideUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Incoming Configuration */
+    .message-item.incoming {
+        align-self: flex-start;
+    }
+
+    .message-item.incoming .message-bubble {
+        background-color: var(--bubble-in);
+        color: var(--text-primary);
+        border-radius: 18px;
+        border-bottom-left-radius: 4px;
+    }
+
+    /* Outgoing Configuration */
+    .message-item.outgoing {
+        align-self: flex-end;
+        justify-content: flex-end;
+    }
+
+    .message-item.outgoing .message-bubble {
+        background: var(--primary-gradient);
+        color: var(--text-white);
+        border-radius: 18px;
+        border-bottom-right-radius: 4px;
+    }
+
+    /* Avatar */
+    .avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background-color: #ddd;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #fff;
+        flex-shrink: 0;
+        cursor: default;
+        text-transform: uppercase;
+    }
+
+    .message-group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .sender-name {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        margin-left: 10px;
+        margin-bottom: 2px;
+    }
+
+    .message-bubble {
+        padding: 10px 14px;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        word-wrap: break-word;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    /* Input Area */
+    .chat-input-area {
+        padding: 12px 16px;
+        background: white;
+        border-top: 1px solid rgba(0,0,0,0.05);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .form-control-custom {
+        background-color: #f0f2f5;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 16px;
+        font-size: 0.95rem;
+        width: 100%;
+        transition: box-shadow 0.2s;
+    }
+
+    .form-control-custom:focus {
+        outline: none;
+        box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn-send {
+        background: transparent;
+        color: var(--primary-color);
+        border: none;
+        padding: 8px;
+        cursor: pointer;
+        font-size: 1.25rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+    }
+
+    .btn-send:hover {
+        transform: scale(1.1);
+        color: #006aff;
+    }
+    /* System Message */
+    .message-item.system {
+        align-self: center;
+        max-width: 100%;
+        margin: 10px 0;
+    }
+
+    .message-item.system .message-bubble {
+        background: transparent;
+        color: var(--text-secondary);
+        box-shadow: none;
+        font-size: 0.85rem;
+        font-style: italic;
+        padding: 4px 12px;
+        text-align: center;
+    }
+
+    /* Emoji Picker */
+    .emoji-picker {
+        position: absolute;
+        bottom: 70px;
+        left: 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        padding: 10px;
+        display: none;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 5px;
+        width: 250px;
+        z-index: 100;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .emoji-btn {
+        background: transparent;
+        border: none;
+        font-size: 1.25rem;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 5px;
+        transition: background 0.2s;
+    }
+
+    .emoji-btn:hover {
+        background-color: #f0f2f5;
+    }
+
+    .btn-emoji-toggle {
+        background: transparent;
+        border: none;
+        color: #ffca28; /* Emoji yellowish */
+        font-size: 1.5rem;
+        cursor: pointer;
+        padding: 0 10px;
+        transition: transform 0.2s;
+    }
+
+    .btn-emoji-toggle:hover {
+        transform: scale(1.1);
+    }
+
+    /* Image Preview */
+    .image-preview-container {
+        position: absolute;
+        bottom: 70px; /* Above input */
+        left: 20px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        padding: 10px;
+        z-index: 100;
+        border: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .preview-wrapper {
+        position: relative;
+        display: inline-block;
+    }
+
+    .preview-wrapper img {
+        max-width: 150px;
+        max-height: 150px;
+        border-radius: 8px;
+        display: block;
+    }
+
+    .btn-clear-preview {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: white;
+        border: none;
+        color: #ff3b30;
+        font-size: 1.25rem;
+        cursor: pointer;
+        border-radius: 50%;
+        padding: 0;
+        line-height: 1;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+</style>
+
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>Global Chat</h2>
+        <span class="badge bg-light text-dark">Live</span>
+    </div>
+
+    <div class="chat-messages" id="scrollContainer">
+        <ul id="list" class="message-list">
+            <!-- Messages will appear here -->
+        </ul>
+    </div>
+
+    <div class="chat-input-area" style="position: relative;">
+        <!-- Emoji Picker Popup -->
+        <div id="imagePreview" class="image-preview-container" style="display: none;">
+            <div class="preview-wrapper">
+                <img id="previewImg" src="" alt="Preview" />
+                <button class="btn-clear-preview" onclick="clearPreview()"><i class="bi bi-x-circle-fill"></i></button>
+            </div>
+        </div>
+        
+        <div id="emojiPicker" class="emoji-picker">
+            <button class="emoji-btn" onclick="addEmoji('😀')">😀</button>
+            <button class="emoji-btn" onclick="addEmoji('😂')">😂</button>
+            <button class="emoji-btn" onclick="addEmoji('😍')">😍</button>
+            <button class="emoji-btn" onclick="addEmoji('👍')">👍</button>
+            <button class="emoji-btn" onclick="addEmoji('🎉')">🎉</button>
+            <button class="emoji-btn" onclick="addEmoji('🔥')">🔥</button>
+            <button class="emoji-btn" onclick="addEmoji('❤️')">❤️</button>
+            <button class="emoji-btn" onclick="addEmoji('😎')">😎</button>
+            <button class="emoji-btn" onclick="addEmoji('🤔')">🤔</button>
+            <button class="emoji-btn" onclick="addEmoji('😭')">😭</button>
+            <button class="emoji-btn" onclick="addEmoji('👋')">👋</button>
+            <button class="emoji-btn" onclick="addEmoji('🙏')">🙏</button>
+        </div>
+
+        <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="handleImageUpload()" />
+        <input type="file" id="fileInput" style="display: none;" onchange="handleFileUpload()" />
+        
+        <button class="btn-emoji-toggle" onclick="document.getElementById('fileInput').click()">
+            <i class="bi bi-paperclip"></i>
+        </button>
+
+        <button class="btn-emoji-toggle" onclick="document.getElementById('imageInput').click()" style="color: #0084ff;">
+            <i class="bi bi-image"></i>
+        </button>
+
+        <button id="emojiToggleBtn" class="btn-emoji-toggle" onclick="toggleEmojiPicker()">
+            <i class="bi bi-emoji-smile-fill"></i>
+        </button>
+        <input id="msg" class="form-control-custom" placeholder="Aa" />
+        <button onclick="send()" class="btn-send"><i class="bi bi-send-fill"></i></button>
+    </div>
+</div>
+
+<!-- Username Modal (unchanged) -->
+<div class="modal fade" id="nameModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+    <!-- ... (content unchanged) ... -->
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Welcome to Chat</h5>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">Please enter your name to join the conversation.</p>
+                <input id="userNameInput" class="form-control form-control-lg" placeholder="Your Name (e.g., Alice)" />
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-primary w-100 rounded-pill py-2" onclick="saveName()">Start Chatting</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+
+<script>
+    let currentUserName = "";
+    let pendingImage = null;
+
+    const conn = new signalR.HubConnectionBuilder()
+        .withUrl("/chatHub")
+        .build();
+
+    function toggleEmojiPicker() {
+        const picker = document.getElementById("emojiPicker");
+        picker.style.display = picker.style.display === "grid" ? "none" : "grid";
+    }
+
+    function addEmoji(emoji) {
+        const msgInput = document.getElementById("msg");
+        msgInput.value += emoji;
+        msgInput.focus();
+    }
+    
+    let pendingFileUrl = "";
+    let pendingFileName = "";
+
+    function handleFileUpload() {
+        const fileInput = document.getElementById('fileInput');
+        const file = fileInput.files[0];
+        
+        if (file) {
+            // Remove client-side size check since we now support large files
+            
+            // Show upload status
+            pendingFileName = file.name;
+            const fileInfo = getFileInfoElement();
+            fileInfo.innerText = "⏳ Uploading " + pendingFileName + "...";
+            fileInfo.style.display = 'block';
+            document.getElementById("imagePreview").style.display = "block";
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) throw new Error("Upload failed");
+                return response.json();
+            })
+            .then(data => {
+                pendingFileUrl = data.url;
+                fileInfo.innerText = "✅ Ready: " + pendingFileName;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("Upload failed: " + error.message);
+                clearPreview();
+            });
+
+            fileInput.value = ''; 
+        }
+    }
+    
+    function getFileInfoElement() {
+        let fileInfo = document.getElementById("previewFileInfo");
+        if(!fileInfo) {
+            fileInfo = document.createElement("div");
+            fileInfo.id = "previewFileInfo";
+            fileInfo.style.padding = "10px";
+            fileInfo.style.fontWeight = "bold";
+            document.querySelector(".preview-wrapper").appendChild(fileInfo);
+        }
+        return fileInfo;
+    }
+    
+    function handleImageUpload() {
+        const fileInput = document.getElementById('imageInput');
+        const file = fileInput.files[0];
+        
+        if (file) {
+             // For images, we can still use Base64 if small, but let's stick to consistent upload for Large Images too?
+             // Or keep Base64 for images (instant) and Upload for files (reliable)?
+             // The user asked for "file" limit 1.5GB. Usually images aren't 1.5GB.
+             // Let's keep the existing Image logic for now as it's separate button. 
+             // Re-adding the size check for IMAGES only just in case they try a 1.5GB BMP.
+             
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit for Base64 Images
+                alert("Image too large for quick preview! Please use the 'Paperclip' button to send as a high-res file.");
+                fileInput.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                pendingImage = e.target.result;
+                
+                 const fileInfo = document.getElementById("previewFileInfo");
+                 if(fileInfo) fileInfo.style.display = 'none';
+
+                const previewImg = document.getElementById("previewImg");
+                previewImg.src = pendingImage;
+                previewImg.style.display = 'block';
+                
+                document.getElementById("imagePreview").style.display = "block";
+            };
+            reader.readAsDataURL(file);
+            fileInput.value = ''; 
+        }
+    }
+    
+    function clearPreview() {
+        pendingImage = null;
+        pendingFileUrl = ""; // Reset URL
+        pendingFileName = "";
+        document.getElementById("imagePreview").style.display = "none";
+        document.getElementById("previewImg").src = "";
+    }
+
+    // ... (window.onload and modal logic unchanged) ...
+
+    window.onload = function () {
+        var myModal = new bootstrap.Modal(document.getElementById('nameModal'));
+        myModal.show();
+        
+        document.addEventListener('click', function(event) {
+            const picker = document.getElementById("emojiPicker");
+            const toggleBtn = document.getElementById('emojiToggleBtn');
+            if (picker && toggleBtn && !picker.contains(event.target) && !toggleBtn.contains(event.target)) {
+                 picker.style.display = 'none';
+            }
+        });
+    };
+
+   // Restoring missing functions
+    function saveName() {
+        const input = document.getElementById("userNameInput").value;
+        if (input && input.trim() !== "") {
+            currentUserName = input;
+            const modalEl = document.getElementById('nameModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            modal.hide();
+            
+            // Connect and notify join
+            conn.start().then(() => {
+                conn.invoke("JoinChat", currentUserName).catch(err => console.error(err.toString()));
+            }).catch(err => console.error(err.toString()));
+
+            document.getElementById("msg").focus();
+        }
+    }
+
+    // Modal enter key support
+    document.getElementById("userNameInput").addEventListener("keyup", function(event) {
+        if (event.key === "Enter") {
+            saveName();
+        }
+    });
+
+    function getAvatarColor(name) {
+        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEEAD', '#D4A5A5', '#9B59B6', '#3498DB'];
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % colors.length;
+        return colors[index];
+    }
+
+    conn.on("ReceiveMessage", (u, m) => {
+        // System Message handling
+        if (u === "System") {
+            console.log(m); // Log to console as requested
+            
+            const li = document.createElement("li");
+            li.className = "message-item system";
+            li.innerHTML = `<div class="message-bubble">${m}</div>`;
+            document.getElementById("list").appendChild(li);
+            
+            const container = document.getElementById("scrollContainer");
+            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            return;
+        }
+
+        const li = document.createElement("li");
+        const isSelf = u === currentUserName;
+        
+        li.className = `message-item ${isSelf ? 'outgoing' : 'incoming'}`;
+        
+        const avatarInitial = u.charAt(0);
+        const avatarColor = getAvatarColor(u);
+        
+        if (isSelf) {
+            li.innerHTML = `
+                <div class="message-bubble">
+                    <div class="message-text">${m}</div>
+                </div>
+            `;
+        } else {
+            li.innerHTML = `
+                <div class="avatar" style="background-color: ${avatarColor}">${avatarInitial}</div>
+                <div class="message-group">
+                    <span class="sender-name">${u}</span>
+                    <div class="message-bubble">
+                        <div class="message-text">${m}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        document.getElementById("list").appendChild(li);
+        
+        const container = document.getElementById("scrollContainer");
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    });
+    
+    conn.on("ReceiveImage", (u, imgBase64) => {
+        const li = document.createElement("li");
+        const isSelf = u === currentUserName;
+        
+        li.className = `message-item ${isSelf ? 'outgoing' : 'incoming'}`;
+        
+        const avatarInitial = u.charAt(0);
+        const avatarColor = getAvatarColor(u);
+        
+        const imageHtml = `<img src="${imgBase64}" style="max-width: 200px; border-radius: 12px; display: block;" />`;
+
+        if (isSelf) {
+            li.innerHTML = `
+                <div class="message-bubble" style="background: transparent; padding: 0;">
+                    ${imageHtml}
+                </div>
+            `;
+        } else {
+            li.innerHTML = `
+                <div class="avatar" style="background-color: ${avatarColor}">${avatarInitial}</div>
+                <div class="message-group">
+                    <span class="sender-name">${u}</span>
+                    <div class="message-bubble" style="background: transparent; padding: 0;">
+                        ${imageHtml}
+                    </div>
+                </div>
+            `;
+        }
+        
+        document.getElementById("list").appendChild(li);
+        const container = document.getElementById("scrollContainer");
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    });
+
+    conn.on("ReceiveFile", (u, fileName, fileBase64) => {
+        const li = document.createElement("li");
+        const isSelf = u === currentUserName;
+        
+        li.className = `message-item ${isSelf ? 'outgoing' : 'incoming'}`;
+        
+        const avatarInitial = u.charAt(0);
+        const avatarColor = getAvatarColor(u);
+        
+        const fileHtml = `
+            <div style="background: ${isSelf ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)'}; padding: 10px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+                <i class="bi bi-file-earmark-text-fill" style="font-size: 1.5rem;"></i>
+                <div style="display: flex; flex-direction: column;">
+                    <span style="font-weight: 500; font-size: 0.9rem;">${fileName}</span>
+                    <a href="${fileBase64}" download="${fileName}" style="font-size: 0.8rem; text-decoration: none; color: ${isSelf ? '#fff' : '#0084ff'}; font-weight: bold;">Download</a>
+                </div>
+            </div>
+        `;
+
+        if (isSelf) {
+            li.innerHTML = `
+                <div class="message-bubble">
+                    ${fileHtml}
+                </div>
+            `;
+        } else {
+            li.innerHTML = `
+                <div class="avatar" style="background-color: ${avatarColor}">${avatarInitial}</div>
+                <div class="message-group">
+                    <span class="sender-name">${u}</span>
+                    <div class="message-bubble">
+                        ${fileHtml}
+                    </div>
+                </div>
+            `;
+        }
+        
+        document.getElementById("list").appendChild(li);
+        const container = document.getElementById("scrollContainer");
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    });
+
+    function send() {
+        const msg = document.getElementById("msg").value;
+        
+        // Priority 1: Send Image if exists
+        if (pendingImage) {
+            conn.invoke("SendImage", currentUserName, pendingImage)
+                .then(() => clearPreview())
+                .catch(err => console.error(err.toString()));
+        } else if (pendingFileUrl) { // Priority 2: Send File URL if exists
+            conn.invoke("SendFile", currentUserName, pendingFileName, pendingFileUrl)
+                .then(() => clearPreview())
+                .catch(err => console.error(err.toString()));
+        }
+        
+        // Priority 3: Send Text if exists
+        if (msg) {
+             conn.invoke("SendMessage", currentUserName, msg).catch(err => console.error(err.toString()));
+             document.getElementById("msg").value = '';
+             document.getElementById("msg").focus();
+        }
+    }
+
+    document.getElementById("msg").addEventListener("keyup", function(event) {
+        if (event.key === "Enter") {
+            send();
+        }
+    });
+
+
+
+</script>
