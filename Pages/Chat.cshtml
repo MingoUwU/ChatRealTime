@@ -371,6 +371,18 @@
     </div>
 </div>
 
+<!-- Image Viewer Modal -->
+<div class="modal fade" id="imageViewerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content" style="background: transparent; border: none;">
+            <div class="modal-body p-0 text-center" style="position: relative;">
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close" style="position: absolute; top: -30px; right: 0; z-index: 1051;"></button>
+                <img id="fullSizeImage" src="" class="img-fluid rounded" style="max-height: 90vh; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
 
 <script>
@@ -586,6 +598,12 @@
         container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     });
     
+    function showImage(src) {
+        document.getElementById("fullSizeImage").src = src;
+        var myModal = new bootstrap.Modal(document.getElementById('imageViewerModal'));
+        myModal.show();
+    }
+
     conn.on("ReceiveImage", (u, imgBase64) => {
         const li = document.createElement("li");
         const isSelf = u === currentUserName;
@@ -595,7 +613,8 @@
         const avatarInitial = u.charAt(0);
         const avatarColor = getAvatarColor(u);
         
-        const imageHtml = `<img src="${imgBase64}" style="max-width: 200px; border-radius: 12px; display: block;" />`;
+        // Added onclick to open modal, and cursor: pointer
+        const imageHtml = `<img src="${imgBase64}" onclick="showImage('${imgBase64}')" style="max-width: 200px; border-radius: 12px; display: block; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'" />`;
 
         if (isSelf) {
             li.innerHTML = `
